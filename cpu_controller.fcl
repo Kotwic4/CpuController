@@ -1,0 +1,67 @@
+FUNCTION_BLOCK
+
+VAR_INPUT
+cpu_temp : REAL;
+fan_speed : REAL;
+fan_mode : REAL;
+END_VAR
+
+VAR_OUTPUT
+fan_speed_change : REAL;
+END_VAR
+
+FUZZIFY cpu_temp
+TERM cold := (0, 1) (20, 1) (30, 0.50) (40, 0);
+TERM normal := (20, 0) (30, 0.50) (40, 1) (50, 0.50) (60, 0);
+TERM hot := (40, 0) (50, 0.50) (60, 1) (70, 1) (80, 0.50) (90, 0);
+TERM very_hot := (70, 0) (80, 0.50) (90, 1) (100, 1);
+END_FUZZIFY
+
+FUZZIFY fan_speed
+TERM quiet := (0, 1) (10, 1) (20, 0.50) (30, 0);
+TERM normal := (10, 0) (20, 0.50) (30, 1) (40, 1) (50, 0.50) (60, 0);
+TERM loud := (40, 0) (50, 0.50) (60, 1) (70, 1) (80, 0.50) (90, 0);
+TERM very_loud := (70, 0) (80, 0.50) (90, 1) (100, 1);
+END_FUZZIFY
+
+FUZZIFY fan_mode
+TERM silence := (0, 1) (2, 1) (3, 0.50) (4, 0) (7, 0);
+TERM balanced := (2, 0) (3, 0.50) (4, 1) (6, 1) (7, 0.50) (8, 0);
+TERM performance := (3, 0) (6, 0) (7, 0.50) (8, 1) (10, 1);
+END_FUZZIFY
+
+DEFUZZIFY fan_speed_change
+TERM lower := (0, 1) (2, 1) (3, 0.50) (4, 0) (7, 0);
+TERM leave := (2, 0) (3, 0.50) (4, 1) (6, 1) (7, 0.50) (8, 0);
+TERM increase := (3, 0) (6, 0) (7, 0.50) (8, 1) (10, 1);
+METHOD : COG;
+DEFAULT := 0;
+END_DEFUZZIFY
+
+RULEBLOCK first
+AND: MIN;
+ACT: MIN;
+
+RULE 0: IF fan_mode IS performance AND fan_speed IS very_loud THEN fan_speed_change IS leave;
+RULE 1: IF fan_mode IS performance AND fan_speed IS NOT very_loud THEN fan_speed_change IS increase;
+
+RULE 2: IF fan_mode IS silence AND fan_speed IS quiet THEN fan_speed_change IS leave;
+RULE 3: IF fan_mode IS silence AND fan_speed IS NOT quiet THEN fan_speed_change IS lower;
+
+RULE 4: IF fan_mode IS balanced AND cpu_temp IS cold AND fan_speed IS quiet THEN fan_speed_change IS leave;
+RULE 5: IF fan_mode IS balanced AND cpu_temp IS normal AND fan_speed IS normal THEN fan_speed_change IS leave;
+RULE 6: IF fan_mode IS balanced AND cpu_temp IS hot AND fan_speed IS loud THEN fan_speed_change IS leave;
+RULE 7: IF fan_mode IS balanced AND cpu_temp IS very_hot AND fan_speed IS very_loud THEN fan_speed_change IS leave;
+
+RULE 8: IF fan_mode IS balanced AND cpu_temp IS cold AND fan_speed IS NOT quiet THEN fan_speed_change IS lower;
+RULE 9: IF fan_mode IS balanced AND cpu_temp IS very_hot AND fan_speed IS NOT very_loud THEN fan_speed_change IS increase;
+
+RULE 10: IF fan_mode IS balanced AND cpu_temp IS NOT cold AND fan_speed IS quiet THEN fan_speed_change IS increase;
+RULE 11: IF fan_mode IS balanced AND cpu_temp IS NOT very_hot AND fan_speed IS very_loud THEN fan_speed_change IS lower;
+
+RULE 12: IF fan_mode IS balanced AND cpu_temp IS normal AND fan_speed IS loud THEN fan_speed_change IS lower;
+RULE 13: IF fan_mode IS balanced AND cpu_temp IS hot AND fan_speed IS normal THEN fan_speed_change IS increase;
+
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
